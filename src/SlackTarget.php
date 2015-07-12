@@ -40,7 +40,7 @@ class SlackTarget extends \yii\log\Target
     public $webHookUrl;
 
     /**
-     * @var
+     * @var \Maknz\Slack\Client
      */
     public $client;
 
@@ -69,6 +69,7 @@ class SlackTarget extends \yii\log\Target
             'link_names' => true,
             'icon' => $this->icon
         ]);
+
     }
 
     /**
@@ -76,15 +77,18 @@ class SlackTarget extends \yii\log\Target
      */
     public function export()
     {
-        $message = ArrayHelper::getValue($this->messages[0], 0, 'Unknown Error');
+        $text = ArrayHelper::getValue($this->messages[0], 0, 'Unknown Error');
+        $message = $this->client->createMessage();
 
-        $this->client->attach([
+        $message->attach([
             'title' => ArrayHelper::getValue($this->messages[0], 2, 'Site Error'),
-            'text' => $message,
-            'fallback' => $message,
+            'text' => $text,
+            'fallback' => $text,
             'color' => $this->color,
-            'fields' => ArrayHelper::getValue($this->messages[1], 0, []),
-        ])->send();
+            'fields' => $this->getContextAttachment(),
+        ]);
+
+        $message->send();
     }
 
     /**
@@ -100,13 +104,13 @@ class SlackTarget extends \yii\log\Target
     /**
      * @return array
      */
-    protected function getContextMessage()
+    protected function getContextAttachment()
     {
         if ($this->showFullContext) {
-            return $this->getFullContextMessage();
+            return $this->getFullContextAttachment();
         }
 
-        $context = (Yii::$app instanceof \yii\web\Application) ? $this->getWebContext() : $this->getConsoleContext();
+        $context = (Yii::$app instanceof \yii\web\Application) ? $this->getWebContext(Yii::$app) : $this->getConsoleContext(Yii::$app);
 
         $context[] = [
             'title' => 'Time',
@@ -121,7 +125,7 @@ class SlackTarget extends \yii\log\Target
      * Returns the full set of context attachments, including all super globals
      * @return array
      */
-    public function getFullContextMessage()
+    public function getFullContextAttachment()
     {
         $context = [];
         foreach ($this->logVars as $name) {
@@ -145,12 +149,12 @@ class SlackTarget extends \yii\log\Target
      * Returns the log context for a console application
      * @return array
      */
-    public function getConsoleContext()
+    public function getConsoleContext(\yii\console\Application $app)
     {
         return [
             [
                 'title' => 'Params',
-                'value' => implode(' ', Yii::$app->getRequest()->getParams()),
+                'value' => implode(' ', $app->getRequest()->getParams()),
                 'short' => true
             ]
         ];
@@ -160,10 +164,10 @@ class SlackTarget extends \yii\log\Target
      * Returns the log context for a web application
      * @return array
      */
-    public function getWebContext()
+    public function getWebContext(\yii\web\Application $app)
     {
-        $request = Yii::$app->getRequest();
-        $user = Yii::$app->getUser();
+        $request = $app->getRequest();
+        $user = $app->getUser();
 
         return [
             [
