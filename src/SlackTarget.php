@@ -77,8 +77,9 @@ class SlackTarget extends \yii\log\Target
      */
     public function export()
     {
-        $text = ArrayHelper::getValue($this->messages[0], 0, 'Unknown Error');
+        $error = ArrayHelper::getValue($this->messages[0], 0, 'Unknown Error');
         $message = $this->client->createMessage();
+        $text = is_object($error) ? $error->__toString() : $error;
 
         $message->attach([
             'title' => ArrayHelper::getValue($this->messages[0], 2, 'Site Error'),
