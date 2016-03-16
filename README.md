@@ -1,5 +1,8 @@
 # Slack LogTarget for Yii2
 
+[![Scrutinizer Code Quality](https://scrutinizer-ci.com/g/webtoolsnz/yii2-slack/badges/quality-score.png?b=master)](https://scrutinizer-ci.com/g/webtoolsnz/yii2-slack/?branch=master)
+
+
 Provides a Yii2 LogTarget implementation for slack incoming webhooks.
 
 ## Installation
