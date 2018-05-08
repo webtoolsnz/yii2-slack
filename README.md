@@ -23,6 +23,7 @@ You will need to [create an incoming webhook](https://my.slack.com/services/new/
                 [
                     'class' => 'webtoolsnz\slack\SlackTarget',
                     'levels' => ['error', 'warning'],
+                    'enabled' => true, // or false, if you want to turn off
                     'webHookUrl' => 'https://your.webhook.url',
                     'except' => [
                         'yii\web\HttpException:404',

@@ -2,9 +2,12 @@
 
 namespace webtoolsnz\slack;
 
+use Maknz\Slack\Client;
 use Yii;
 use yii\base\InvalidConfigException;
+use yii\console\Application as ConsoleApplication;
 use yii\helpers\ArrayHelper;
+use yii\web\Application as WebApplication;
 
 class SlackTarget extends \yii\log\Target
 {
@@ -34,13 +37,13 @@ class SlackTarget extends \yii\log\Target
     public $color = 'danger';
 
     /**
-     *
-     * @var
+     * WebHook URL
+     * @var string
      */
     public $webHookUrl;
 
     /**
-     * @var \Maknz\Slack\Client
+     * @var Client
      */
     public $client;
 
@@ -63,7 +66,7 @@ class SlackTarget extends \yii\log\Target
             throw new InvalidConfigException('SlackTarget::webHookUrl must be set.');
         }
 
-        $this->client = new \Maknz\Slack\Client($this->webHookUrl, [
+        $this->client = new Client($this->webHookUrl, [
             'username' => $this->username,
             'channel' => $this->channel,
             'link_names' => true,
@@ -77,12 +80,13 @@ class SlackTarget extends \yii\log\Target
      */
     public function export()
     {
-        $error = ArrayHelper::getValue($this->messages[0], 0, 'Unknown Error');
+        $source = $this->messages[0];
+        $error = ArrayHelper::getValue($source, 0, 'Unknown Error');
         $message = $this->client->createMessage();
-        $text = is_object($error) ? $error->__toString() : $error;
+        $text = is_object($error) && method_exists($error, '__toString') ? (string)$error : $error;
 
         $message->attach([
-            'title' => ArrayHelper::getValue($this->messages[0], 2, 'Site Error'),
+            'title' => ArrayHelper::getValue($source, 2, 'Site Error'),
             'text' => $text,
             'fallback' => $text,
             'color' => $this->color,
@@ -98,7 +102,7 @@ class SlackTarget extends \yii\log\Target
      */
     public function getSenderName()
     {
-        $name = (Yii::$app instanceof \yii\web\Application) ? Yii::$app->getRequest()->serverName : Yii::$app->name;
+        $name = $this->isWebApplication() ? Yii::$app->getRequest()->serverName : Yii::$app->name;
         return sprintf('[%s] %s', YII_ENV, $name);
     }
 
@@ -111,7 +115,7 @@ class SlackTarget extends \yii\log\Target
             return $this->getFullContextAttachment();
         }
 
-        $context = (Yii::$app instanceof \yii\web\Application) ? $this->getWebContext(Yii::$app) : $this->getConsoleContext(Yii::$app);
+        $context = $this->isWebApplication() ? $this->getWebContext(Yii::$app) : $this->getConsoleContext(Yii::$app);
 
         $context[] = [
             'title' => 'Time',
@@ -120,6 +124,14 @@ class SlackTarget extends \yii\log\Target
         ];
 
         return $context;
+    }
+
+    /**
+     * @return bool
+     */
+    protected function isWebApplication()
+    {
+        return Yii::$app instanceof WebApplication;
     }
 
     /**
@@ -148,9 +160,10 @@ class SlackTarget extends \yii\log\Target
 
     /**
      * Returns the log context for a console application
+     * @param ConsoleApplication $app
      * @return array
      */
-    public function getConsoleContext(\yii\console\Application $app)
+    public function getConsoleContext(ConsoleApplication $app)
     {
         return [
             [
@@ -163,9 +176,10 @@ class SlackTarget extends \yii\log\Target
 
     /**
      * Returns the log context for a web application
+     * @param WebApplication $app
      * @return array
      */
-    public function getWebContext(\yii\web\Application $app)
+    public function getWebContext(WebApplication $app)
     {
         $request = $app->getRequest();
         $user = $app->getUser();
